@@ -1,0 +1,55 @@
+{
+    "version": 1,
+    "name": "DiceInput",
+    "maps": [
+        {
+            "name": "Controler",
+            "id": "bbadd41d-3e75-4a81-a5ff-8257f39185d2",
+            "actions": [
+                {
+                    "name": "Throw",
+                    "type": "Button",
+                    "id": "ec6fea9c-4d5c-4f23-8369-2030111809df",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Rebind",
+                    "type": "Button",
+                    "id": "df7e1134-f09e-4192-90e3-2ca4a87384d0",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "6bb7c0e1-f80d-408a-b657-a0f1b60e0a05",
+                    "path": "<Keyboard>/space",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Throw",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "cec55748-bd64-49de-92c7-e069057e40e5",
+                    "path": "<Keyboard>/r",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Rebind",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
+        }
+    ],
+    "controlSchemes": []
+}

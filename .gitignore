@@ -1,0 +1,14 @@
+.DS_Store
+Library/
+Temp/
+Logs/
+UserSettings/
+MemoryCaptures/
+Recordings/
+Build/
+Builds/
+obj/
+.vscode/
+*.csproj
+*.sln
+*.slnx
