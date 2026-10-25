@@ -1,80 +1,97 @@
 using System.Collections;
-using TMPro;
+using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 public class DiceGameController : MonoBehaviour
 {
-    [Header("Настройки кубиков")]
-    [SerializeField] private Dice[] dice;
+    [Header("Префаб и спавн")]
+    [SerializeField] private GameObject dicePrefab;
+    [SerializeField] private Transform diceParent;
+    [SerializeField] private int defaultDiceCount = 2;
+    [SerializeField] private float spawnRadius = 3f;
 
-    [Header("Сила броска")]
+    [Header("Бросок")]
     [SerializeField] private float minForce = 9f;
-    [SerializeField] private float maxForce = 15f;
-    [SerializeField] private float minTorque = 350f;
-    [SerializeField] private float maxTorque = 750f;
-    [SerializeField] private float sideSpread = 2.5f;
+    [SerializeField] private float maxForce = 12f;
+    [SerializeField] private float minTorque = 1f;
+    [SerializeField] private float maxTorque = 3f;
+    [SerializeField] private float sideSpread = 2f;
 
-    [Header("UI и Ввод")]
-    [SerializeField] private TextMeshProUGUI resultText;
-    [SerializeField] private InputActionAsset actions;
+    [Header("UI")]
+    [SerializeField] private DiceUIView ui;
 
-    private InputAction throwAction;
-    private InputAction rebindAction;
+    private readonly List<Dice> dice = new List<Dice>();
+    private int diceCount;
+    private int winThreshold;
+    private int drawThreshold;
+    private int loseThreshold;
     private bool waitingForSettle;
-    private bool rebinding;
-    private int rebindArmIn;
 
-    private void OnEnable()
+    public int DiceCount => diceCount;
+    public int WinThreshold => winThreshold;
+    public int DrawThreshold => drawThreshold;
+    public int LoseThreshold => loseThreshold;
+
+    private void Awake()
     {
-        if (actions == null) return;
-
-        throwAction = actions.FindAction("Throw");
-        rebindAction = actions.FindAction("Rebind");
-
-        if (throwAction != null) throwAction.performed += _ => ThrowDice();
-        if (rebindAction != null) rebindAction.performed += _ => StartRebind();
-
-        actions.Enable();
+        diceCount = defaultDiceCount;
+        SpawnDice(diceCount);
+        RollNewThresholds();
+        ui.Initialize(this);
     }
 
-    private void OnDisable()
+    public void OnRollButton()
     {
-        if (actions != null) actions.Disable();
-        rebinding = false;
+        if (waitingForSettle) return;
+
+        diceCount = ui.GetDiceCountOrDefault(diceCount);
+
+        if (!ui.TryGetThresholds(out winThreshold, out drawThreshold, out loseThreshold))
+            RollNewThresholds();
+
+        RespawnDice(diceCount);
+        ui.SetDiceCount(diceCount);
+        ui.SetThresholds(winThreshold, drawThreshold, loseThreshold);
+        ThrowAll();
     }
 
-    private void Update()
+    private void SpawnDice(int count)
     {
-        if (!rebinding) return;
-
-        if (rebindArmIn > 0)
+        for (int i = 0; i < count; i++)
         {
-            rebindArmIn--;
-            return;
-        }
+            Vector3 pos = new Vector3(
+                Random.Range(-spawnRadius, spawnRadius),
+                0.5f,
+                Random.Range(-spawnRadius, spawnRadius));
 
-        var keyboard = Keyboard.current;
-        if (keyboard == null) return;
-
-        foreach (var key in keyboard.allKeys)
-        {
-            if (!key.wasPressedThisFrame) continue;
-
-            throwAction.ApplyBindingOverride(0, new InputBinding { overridePath = "<Keyboard>/" + key.name });
-            rebinding = false;
-
-            if (resultText != null) resultText.text = "Новая кнопка броска: " + key.displayName;
-            break;
+            Dice d = Instantiate(dicePrefab, pos, Quaternion.identity, diceParent)
+                .GetComponent<Dice>();
+            dice.Add(d);
         }
     }
 
-    private void ThrowDice()
+    private void RespawnDice(int count)
     {
-        if (waitingForSettle || rebinding) return;
+        foreach (var d in dice)
+            Destroy(d.gameObject);
+        dice.Clear();
+        SpawnDice(count);
+    }
 
+    private void RollNewThresholds()
+    {
+        int minSum = diceCount;
+        int maxSum = diceCount * 6;
+        loseThreshold = minSum;
+        drawThreshold = Random.Range(minSum + 1, maxSum);
+        winThreshold = Random.Range(drawThreshold + 1, maxSum + 1);
+    }
+
+    private void ThrowAll()
+    {
         waitingForSettle = true;
-        if (resultText != null) resultText.text = "Бросок...";
+        ui.SetResult("Бросок...");
+        ui.SetOutcome("");
 
         foreach (var d in dice)
         {
@@ -102,7 +119,6 @@ public class DiceGameController : MonoBehaviour
         while (true)
         {
             bool allSettled = true;
-
             foreach (var d in dice)
             {
                 if (!d.IsSettled)
@@ -111,31 +127,26 @@ public class DiceGameController : MonoBehaviour
                     break;
                 }
             }
-
             if (allSettled) break;
-
             yield return null;
         }
 
         int sum = 0;
+        var values = new List<int>();
         foreach (var d in dice)
         {
-            sum += d.GetTopFaceValue();
+            int v = d.GetTopFaceValue();
+            values.Add(v);
+            sum += v;
         }
 
-        if (resultText != null) resultText.text = $"Сумма: {sum}";
+        ui.SetResult($"Выпало: {string.Join(" + ", values)} = {sum}");
+
+        if (sum >= winThreshold) ui.SetOutcome("Итог: Победа!");
+        else if (sum >= drawThreshold) ui.SetOutcome("Итог: Ничья");
+        else ui.SetOutcome("Итог: Поражение");
 
         waitingForSettle = false;
-    }
-
-    private void StartRebind()
-    {
-        if (throwAction == null || rebinding) return;
-
-        rebinding = true;
-        rebindArmIn = 2;
-
-        if (resultText != null) resultText.text = "Нажми новую кнопку для броска...";
     }
 
     private float RandomSign()
